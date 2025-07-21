@@ -1,0 +1,8 @@
+{
+  "name": "Audio Assistant Chrome Extension 19jul2025",
+  "description": "Real-time voice assistance chat to help with online inquiries, form-filling, note-taking/annotating, and other executive assistant functionality--by voice interactions",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "prompt": ""
+}

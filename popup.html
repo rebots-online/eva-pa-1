@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Eva Assistant</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <img src="icons/icon48.png" alt="Eva Icon" />
+        <h1>Eva</h1>
+      </header>
+      <div id="status">
+        <p>Initializing...</p>
+      </div>
+      <div class="controls">
+        <button id="recordButton" aria-label="Start Recording">
+          <svg
+            viewBox="0 0 100 100"
+            width="24px"
+            height="24px"
+            fill="#c80000"
+            xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="50" />
+          </svg>
+        </button>
+        <button id="stopButton" class="hidden" aria-label="Stop Recording">
+          <svg
+            viewBox="0 0 100 100"
+            width="24px"
+            height="24px"
+            fill="#ffffff"
+            xmlns="http://www.w3.org/2000/svg">
+            <rect x="15" y="15" width="70" height="70" rx="15" />
+          </svg>
+        </button>
+      </div>
+      <button id="expandButton">Expand View</button>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
