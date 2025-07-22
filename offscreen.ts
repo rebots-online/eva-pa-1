@@ -327,6 +327,11 @@ class OffscreenAssistant {
     chrome.runtime.sendMessage({
       type: 'OFFSCREEN_STATE_UPDATE',
       state: partialState,
+      target: 'background'
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn(`Error sending OFFSCREEN_STATE_UPDATE from offscreen:`, chrome.runtime.lastError.message);
+      }
     });
   }
 
@@ -339,6 +344,10 @@ class OffscreenAssistant {
         type: 'FREQUENCY_DATA_UPDATE',
         inputData: this.inputAnalyser.data,
         outputData: this.outputAnalyser.data,
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.warn(`Error sending FREQUENCY_DATA_UPDATE from offscreen:`, chrome.runtime.lastError.message);
+        }
       });
     }, 1000 / 60); // 60 fps
   }

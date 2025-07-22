@@ -19,7 +19,11 @@ let state = {
 // Function to update state and notify all clients (popup, full tab)
 const updateState = (newState: any) => {
   state = {...state, ...newState};
-  chrome.runtime.sendMessage({type: 'STATE_UPDATE', state});
+  chrome.runtime.sendMessage({type: 'STATE_UPDATE', state, target: 'popup'}, () => {
+    if (chrome.runtime.lastError) {
+      console.warn(`Error sending STATE_UPDATE to popup:`, chrome.runtime.lastError.message);
+    }
+  });
   console.log('State updated:', state);
 };
 
@@ -64,7 +68,7 @@ async function getOffscreenDocument() {
 }
 
 // Message handling
-chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: any) => {
+chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   if (message.type === 'GET_STATE') {
     sendResponse(state);
     return;
@@ -72,19 +76,32 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: a
 
   // Forward messages to the offscreen document
   if (
-    message.type === 'START_RECORDING' ||
-    message.type === 'STOP_RECORDING' ||
-    message.type === 'RESET_SESSION'
+    message.target === 'offscreen' &&
+    (message.type === 'START_RECORDING' ||
+      message.type === 'STOP_RECORDING' ||
+      message.type === 'RESET_SESSION')
   ) {
-    getOffscreenDocument().then(() => {
-      chrome.runtime.sendMessage(message);
-    });
+    const sendMessageToOffscreen = async () => {
+      await getOffscreenDocument();
+      try {
+        await chrome.runtime.sendMessage(message);
+      } catch (error) {
+        // If the offscreen document isn't ready, retry after a short delay
+        if (error.message.includes('Receiving end does not exist')) {
+          setTimeout(sendMessageToOffscreen, 100);
+        } else {
+          console.error('Error sending message to offscreen document:', error);
+        }
+      }
+    };
+    sendMessageToOffscreen();
     return true; // Keep message channel open for async response
   }
 
   // Handle state changes from offscreen document
   if (message.type === 'OFFSCREEN_STATE_UPDATE') {
     updateState(message.state);
+    return;
   }
 
   // Handle subscription state changes from UI
@@ -93,15 +110,48 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: a
     updateState({isSubscribed: message.isSubscribed});
     // Tell offscreen to reset and reload with new subscription status
     getOffscreenDocument().then(() => {
-      chrome.runtime.sendMessage({type: 'RESET_SESSION'});
+      chrome.runtime.sendMessage({type: 'RESET_SESSION'}, () => {
+        if (chrome.runtime.lastError) {
+          console.warn(`Error sending RESET_SESSION to offscreen document:`, chrome.runtime.lastError.message);
+        }
+      });
     });
   }
 
-  // Handle frequency data for visualizer
+  // 1️⃣  Patch begins here – safer forward of frequency updates
   if (message.type === 'FREQUENCY_DATA_UPDATE') {
-    // Forward to any listening tabs
-    chrome.runtime.sendMessage(message);
+    chrome.tabs.query({}, tabs => {
+      tabs.forEach(tab => {
+        // We “ping” first to see if the tab cares;
+        // if the tab doesn’t answer, we skip the heavy update.
+        chrome.tabs.sendMessage(
+          tab.id!,
+          { type: 'PING' },
+          (pong) => {
+            if (chrome.runtime.lastError) {
+              // No content script in this tab – nothing to do.
+              console.debug(
+                `[background] Tab ${tab.id} not listening (${chrome.runtime.lastError.message})`
+              );
+              return;
+            }
+            if (pong?.readyForFreq) {
+              chrome.tabs.sendMessage(tab.id!, message, () => {
+                if (chrome.runtime.lastError) {
+                  console.debug(
+                    `[background] Follow-up update failed in tab ${tab.id}:`,
+                    chrome.runtime.lastError.message,
+                  );
+                }
+              });
+            }
+          }
+        );
+      });
+    });
+    return true; // keep channel open for async sendResponse if needed
   }
+  // 1️⃣  Patch ends here
 
   return true;
 });

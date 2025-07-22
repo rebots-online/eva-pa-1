@@ -33,13 +33,21 @@ function updateUI(state: any) {
 
 recordButton?.addEventListener('click', () => {
   if (chrome.runtime) {
-    chrome.runtime.sendMessage({type: 'START_RECORDING'});
+    chrome.runtime.sendMessage({type: 'START_RECORDING', target: 'offscreen'}, () => {
+      if (chrome.runtime.lastError) {
+        console.warn(`Error sending START_RECORDING from popup:`, chrome.runtime.lastError.message);
+      }
+    });
   }
 });
 
 stopButton?.addEventListener('click', () => {
   if (chrome.runtime) {
-    chrome.runtime.sendMessage({type: 'STOP_RECORDING'});
+    chrome.runtime.sendMessage({type: 'STOP_RECORDING', target: 'offscreen'}, () => {
+      if (chrome.runtime.lastError) {
+        console.warn(`Error sending STOP_RECORDING from popup:`, chrome.runtime.lastError.message);
+      }
+    });
   }
 });
 
@@ -54,6 +62,13 @@ if (chrome.runtime && chrome.runtime.onMessage) {
   chrome.runtime.onMessage.addListener((message: any) => {
     if (message.type === 'STATE_UPDATE') {
       updateUI(message.state);
+    }
+  });
+
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === "PING") {
+      sendResponse({ readyForFreq: false }); // popup doesn't care about freq updates
+      return true;
     }
   });
 }
@@ -71,3 +86,13 @@ if (chrome.runtime) {
     }
   });
 }
+
+// Handle subscription state changes from UI
+chrome.runtime.sendMessage({
+  type: 'SET_SUBSCRIBED',
+  isSubscribed: isSubscribed,
+}, () => {
+  if (chrome.runtime.lastError) {
+    console.warn(`Error sending SET_SUBSCRIBED from popup:`, chrome.runtime.lastError.message);
+  }
+});

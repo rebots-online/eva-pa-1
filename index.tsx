@@ -321,17 +321,23 @@ export class GdmLiveAudio extends LitElement {
     super();
     // Listen for state updates from the background script
     if (chrome.runtime && chrome.runtime.onMessage) {
-      chrome.runtime.onMessage.addListener((message: any) => {
-        if (message.type === 'STATE_UPDATE') {
-          this.handleStateUpdate(message.state);
-        }
-        if (message.type === 'FREQUENCY_DATA_UPDATE') {
-          if (this.visuals) {
-            this.visuals.inputData = message.inputData;
-            this.visuals.outputData = message.outputData;
+      chrome.runtime.onMessage.addListener(
+        (message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
+          if (message.type === 'STATE_UPDATE') {
+            this.handleStateUpdate(message.state);
           }
-        }
-      });
+          if (message.type === 'FREQUENCY_DATA_UPDATE') {
+            if (this.visuals) {
+              this.visuals.inputData = message.inputData;
+              this.visuals.outputData = message.outputData;
+            }
+          }
+          if (message.type === 'PING') {
+            sendResponse({ readyForFreq: true });
+            return; // stop here so other handlers don’t fire
+          }
+        },
+      );
     }
 
     // Request initial state

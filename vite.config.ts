@@ -16,7 +16,8 @@ export default defineConfig(({ mode }) => {
           input: {
             popup: 'popup.html',
             index: 'index.html',
-            offscreen: 'offscreen.html'
+            offscreen: 'offscreen.html',
+            background: 'background.ts'
           },
           output: {
             entryFileNames: '[name].js',
@@ -53,10 +54,6 @@ export default defineConfig(({ mode }) => {
               src: 'index.css',
               dest: '.'
             },
-            {
-              src: 'public/**/*',
-              dest: '.'
-            }
           ]
         })
       ],
